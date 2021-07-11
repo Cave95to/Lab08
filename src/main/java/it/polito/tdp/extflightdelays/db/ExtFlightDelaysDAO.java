@@ -7,10 +7,13 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
 import it.polito.tdp.extflightdelays.model.Flight;
+import it.polito.tdp.extflightdelays.model.Rotta;
+
 
 public class ExtFlightDelaysDAO {
 
@@ -32,14 +35,13 @@ public class ExtFlightDelaysDAO {
 
 		} catch (SQLException e) {
 			e.printStackTrace();
-			System.out.println("Errore connessione al database");
+			System.out.println("Errore connessione loadlinee al database");
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
 
-	public List<Airport> loadAllAirports() {
+	public void loadAllAirports(Map<Integer, Airport> idMap) {
 		String sql = "SELECT * FROM airports";
-		List<Airport> result = new ArrayList<Airport>();
 
 		try {
 			Connection conn = ConnectDB.getConnection();
@@ -47,18 +49,19 @@ public class ExtFlightDelaysDAO {
 			ResultSet rs = st.executeQuery();
 
 			while (rs.next()) {
-				Airport airport = new Airport(rs.getInt("ID"), rs.getString("IATA_CODE"), rs.getString("AIRPORT"),
+				if(!idMap.containsKey(rs.getInt("ID"))) {
+					Airport airport = new Airport(rs.getInt("ID"), rs.getString("IATA_CODE"), rs.getString("AIRPORT"),
 						rs.getString("CITY"), rs.getString("STATE"), rs.getString("COUNTRY"), rs.getDouble("LATITUDE"),
 						rs.getDouble("LONGITUDE"), rs.getDouble("TIMEZONE_OFFSET"));
-				result.add(airport);
+					idMap.put(airport.getId(), airport);
+				}
 			}
 
 			conn.close();
-			return result;
 
 		} catch (SQLException e) {
 			e.printStackTrace();
-			System.out.println("Errore connessione al database");
+			System.out.println("Errore connessione loadaeroporti al database");
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
@@ -87,7 +90,45 @@ public class ExtFlightDelaysDAO {
 
 		} catch (SQLException e) {
 			e.printStackTrace();
-			System.out.println("Errore connessione al database");
+			System.out.println("Errore connessione loadvoli al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+
+	public List<Rotta> getRotte(Map<Integer, Airport> idMap) {
+		
+		String sql = "SELECT f.ORIGIN_AIRPORT_ID as orig, f.DESTINATION_AIRPORT_ID as dest, AVG(f.DISTANCE) AS avg "
+				+ "FROM flights as f "
+				+ "GROUP BY f.ORIGIN_AIRPORT_ID, f.DESTINATION_AIRPORT_ID ";
+		
+	
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			ResultSet rs = st.executeQuery();
+
+			
+			List<Rotta> result = new ArrayList<>();
+			while (rs.next()) {
+				
+				Airport a1 = idMap.get(rs.getInt("orig"));
+				Airport a2 = idMap.get(rs.getInt("dest"));
+				double distanza = rs.getDouble("avg");
+				
+				if(a1!= null && a2!= null)
+					
+					result.add(new Rotta(a1,a2, distanza));
+			
+				
+			}
+
+			conn.close();
+			return result;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione loadrotte al database");
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
